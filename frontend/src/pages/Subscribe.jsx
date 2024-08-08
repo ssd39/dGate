@@ -25,26 +25,48 @@ export default function Subscribe() {
   const [walletPk, setWalletPk] = useState("");
   const [memo, setMemo] = useState("");
   const [txHash, setTxHash] = useState("");
+  const [isDiamWallet, setDiamWallet] = useState(false);
+
+  useEffect(() => {
+    console.log("diam_wallet", window.diam);
+    if (window.diam) {
+      setDiamWallet(true);
+    }
+  }, [window.diam]);
 
   const pay = async () => {
-    if (walletPk != "") {
+    if (walletPk != "" || isDiamWallet) {
       try {
         setLoading(true);
         const wid = makeid(10);
         setMemo(wid);
-        const server = new Horizon.Server(
-          "https://diamtestnet.diamcircle.io/"
-        );
+        const server = new Horizon.Server("https://diamtestnet.diamcircle.io/");
 
-        const pair = Keypair.fromSecret(walletPk);
-        const account = await server
-          .loadAccount(pair.publicKey())
-          .catch((error) => {
-            if (error instanceof NotFoundError) {
-              toast.error("Wallet not found!");
-            }
-            throw error;
-          });
+        let account = null;
+        let pair = null;
+        if (isDiamWallet) {
+          const walletData = await window.diam.connect();
+          console.log(walletData)
+          account = await server
+            .loadAccount(walletData.message[0])
+            .catch((error) => {
+              if (error instanceof NotFoundError) {
+                toast.error("Wallet not found!");
+              }
+              throw error;
+            });
+        } else {
+          pair = Keypair.fromSecret(walletPk);
+          account = await server
+            .loadAccount(pair.publicKey())
+            .catch((error) => {
+              if (error instanceof NotFoundError) {
+                toast.error("Wallet not found!");
+              }
+              throw error;
+            });
+        }
+
         const transaction = new TransactionBuilder(account, {
           fee: BASE_FEE,
           networkPassphrase: Networks.TESTNET,
@@ -64,12 +86,16 @@ export default function Subscribe() {
           .addMemo(Memo.text(wid))
           .setTimeout(180)
           .build();
-        transaction.sign(pair);
+
+        let txRes = null;
+        if (!isDiamWallet) {
+          transaction.sign(pair);
+          txRes = await server.submitTransaction(transaction);
+        } else {
+          txRes = (await window.diam.sign(transaction.toEnvelope().toXDR('base64'), true, "Diamante Testnet")).response.message;
+        }
+        console.log("txRes", txRes);
         // And finally, send it off to Diamante!
-        const txRes = await server.submitTransaction(
-          transaction
-        );
-        console.log(txRes);
         setTxHash(txRes.hash);
         setStage(2);
         toast.success("Subscription fees paid sucessfully!");
@@ -79,7 +105,7 @@ export default function Subscribe() {
       }
       setLoading(false);
     }
-  }
+  };
   const fetchSub = async (id_) => {
     const sub = await fetch(`${config.API}/subscription/${id_}`);
     const subData = await sub.json();
@@ -167,30 +193,56 @@ export default function Subscribe() {
         <>
           <div className="flex z-[1000] w-full justify-center mt-6 ">
             <div className="flex flex-col rounded-xl w-1/2 shadow-xl shadow-slate-700 p-4 bg-white">
-              <span className="font-bold text-xl text-center">
-                Import your <span className="text-teal-500">DIAMANTE</span>{" "}
-                Wallet to pay{" "}
-                <span className="text-teal-500">
-                  {subDetails.amount} {subDetails.token}
-                </span>
-              </span>
-              <div className="flex w-full mt-4 flex-col ">
-                <span className="text-lg font-bold">Wallet's Private Key</span>
-                <input
-                  className="p-2 px-4 bg-slate-200 rounded-lg"
-                  type="password"
-                  value={walletPk}
-                  onChange={(e) => setWalletPk(e.target.value)}
-                />
-                <div className="flex justify-center">
-                  <div
-                    onClick={async () => pay()}
-                    className="mt-4 bg-slate-700 shadow-xl shadow-teal-200 text-white rounded-full font-bold p-2 px-4 cursor-pointer active:scale-90 select-none"
-                  >
-                    Import & Pay
+              {!isDiamWallet ? (
+                <>
+                  <span className="font-bold text-xl text-center">
+                    Import your <span className="text-teal-500">DIAMANTE</span>{" "}
+                    Wallet to pay{" "}
+                    <span className="text-teal-500">
+                      {subDetails.amount} {subDetails.token}
+                    </span>
+                  </span>
+                  <div className="flex w-full mt-4 flex-col ">
+                    <span className="text-lg font-bold">
+                      Wallet's Private Key
+                    </span>
+                    <input
+                      className="p-2 px-4 bg-slate-200 rounded-lg"
+                      type="password"
+                      value={walletPk}
+                      onChange={(e) => setWalletPk(e.target.value)}
+                    />
+                    <div className="flex justify-center">
+                      <div
+                        onClick={async () => pay()}
+                        className="mt-4 bg-slate-700 shadow-xl shadow-teal-200 text-white rounded-full font-bold p-2 px-4 cursor-pointer active:scale-90 select-none"
+                      >
+                        Import & Pay
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-xl text-center">
+                    Connect your <span className="text-teal-500">DIAMANTE</span>{" "}
+                    Wallet to pay{" "}
+                    <span className="text-teal-500">
+                      {subDetails.amount} {subDetails.token}
+                    </span>
+                  </span>
+                  <div className="flex w-full mt-4 flex-col ">
+                    <div className="flex justify-center">
+                      <div
+                        onClick={async () => pay()}
+                        className="mt-4 bg-slate-700 shadow-xl shadow-teal-200 text-white rounded-full font-bold p-2 px-4 cursor-pointer active:scale-90 select-none"
+                      >
+                        Connect & Pay
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </>
