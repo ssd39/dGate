@@ -5,15 +5,26 @@ const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
 const yaml = require("yamljs");
 const swaggerUi = require("swagger-ui-express");
-const bodyParser = require("body-parser");
 const cors = require("cors");
 const bcrypt = require("bcryptjs");
 
 const User = require("./models/User");
-const { Routes } = require("discord.js");
+const { Routes, REST } = require("discord.js");
 const discord_client = require("./discord_utils/client");
 const Subscription = require("./models/Subscription");
-
+const {
+  Asset,
+  BASE_FEE,
+  Horizon,
+  Keypair,
+  Memo,
+  Networks,
+  NotFoundError,
+  Operation,
+  TransactionBuilder,
+} = require("diamante-sdk-js");
+const Subscribers = require("./models/Subscribers");
+const Transaction = require("./models/Transaction");
 const app = express();
 const port = 3001 || process.env.PORT;
 const dashRouter = express.Router();
@@ -130,8 +141,32 @@ dashRouter.post("/discord_connect", async (req, res) => {
     if (!code) {
       return res.status(401).json({ message: "auth code required!" });
     }
-    const token = await discord_client.getToken(code);
+    const token = await discord_client.getToken(
+      code,
+      process.env.REDIRECT_URI_BOT
+    );
     res.json(token);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/discord_connect_sub", async (req, res) => {
+  try {
+    const code = req.body.code;
+    if (!code) {
+      return res.status(401).json({ message: "auth code required!" });
+    }
+    const token = await discord_client.getToken(
+      code,
+      process.env.REDIRECT_URI_SUBSCRIBE
+    );
+    const rest = new REST({ version: "10", authPrefix: "Bearer" }).setToken(
+      token.access_token
+    );
+    const meData = await rest.get(Routes.user());
+    res.json({ ...token, ...meData });
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Internal server error" });
@@ -210,14 +245,95 @@ app.get("/subscription/:id", async (req, res) => {
   }
 });
 
-app.post("/subscribe", (req, res) => {
-  try{
-    const { subId, txHash, discordId, email, access_token } = req.body;
-
-  }catch(e){
-    console.error(e)
-    res.status(500).json({ error: "Internal server error" });
-
+app.post("/subscribe", async (req, res) => {
+  try {
+    const {
+      subId,
+      txHash,
+      discordId,
+      email,
+      access_token,
+      memo,
+      discordInternalID
+    } = req.body;
+    const subscription = await Subscription.findById(subId);
+    const txRes = await fetch(
+      `https://diamtestnet.diamcircle.io/transactions/${txHash}`
+    );
+    const txData = await txRes.json();
+    if (txData.memo != memo) {
+      res.status(401).json({ message: "Wrong transaction proof submitted!" });
+      return;
+    }
+    const opRes = await fetch(
+      `https://diamtestnet.diamcircle.io/transactions/${txHash}/operations`
+    );
+    const opData = await opRes.json();
+    const amnt = Number(opData._embedded.records[0].amount);
+    if (amnt < subscription.amount) {
+      res
+        .status(401)
+        .json({ message: "Amount is lessthen subscription fees!" });
+      return;
+    }
+    const walletAddress = subscription.walletAddress;
+    let txD = "";
+    if (walletAddress) {
+      const server = new Horizon.Server("https://diamtestnet.diamcircle.io/");
+      const pair = Keypair.fromSecret(process.env.WALLET_PK);
+      const account = await server.loadAccount(pair.publicKey());
+      const transaction = new TransactionBuilder(account, {
+        fee: BASE_FEE,
+        networkPassphrase: Networks.TESTNET,
+      })
+        .addOperation(
+          Operation.payment({
+            destination: walletAddress,
+            asset:
+              subscription.token == "DIAM"
+                ? Asset.native()
+                : new Asset(subscription.token),
+            amount: subscription.amount.toString(),
+          })
+        )
+        .setTimeout(180)
+        .build();
+      transaction.sign(pair);
+      // And finally, send it off to Diamante!
+      txD = await server.submitTransaction(transaction);
+    }
+   
+    const client = discord_client.getClient(process.env.DISCORD_BOT_TOKEN);
+    const disaddRes = await client.put(
+      Routes.guildMember(subscription.guildId, discordInternalID),
+      { body: { access_token } }
+    );
+    console.log(JSON.stringify(disaddRes))
+    console.log(discordInternalID)
+    const subscriber = new Subscribers({
+      discordId,
+      discordInternalId: discordInternalID,
+      email,
+      joinedOn: new Date(),
+      lastPaidAt: new Date(),
+      subId,
+    });
+    await subscriber.save();
+    const subscriberId = subscriber._id;
+    const transaction = new Transaction({
+      amount: amnt,
+      chain: "DIMANTE",
+      subId,
+      txHash,
+      subscriber: subscriberId,
+      token: subscription.token,
+    });
+    await transaction.save();
+    res.json({ message: "Added to server successfully!" });
+  } catch (e) {
+    console.error(e);
+    console.log(JSON.stringify(e))
+    res.status(500).json({ message: "Internal server error" });
   }
 });
 

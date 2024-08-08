@@ -34,7 +34,7 @@ export default function CreateSubscription() {
 
   const loginWithDiscord = () => {
     window.open(
-      "https://discord.com/oauth2/authorize?client_id=1270612842524971091&permissions=8&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fcreate-subscription&integration_type=0&scope=identify+bot"
+      `https://discord.com/oauth2/authorize?client_id=1270612842524971091&permissions=8&response_type=code&redirect_uri=${config.URL}/create-subscription&integration_type=0&scope=identify+bot`
     );
   };
 

@@ -5,7 +5,8 @@ const subscriberSchema = new mongoose.Schema({
     subId: { type: String, required: true },
     lastPaidAt: { type: Date },
     joinedOn: { type: Date },
-    discordId: { type: String, required: true }
+    discordId: { type: String, required: true },
+    discordInternalId: { type: String }
 });
 
 module.exports = mongoose.model('Subscriber', subscriberSchema);

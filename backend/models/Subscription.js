@@ -11,6 +11,7 @@ const subscriptionSchema = new mongoose.Schema({
     durationCount: { type: String, required: true },
     description: { type: String, required: true },
     isChannelBase: { type: Boolean, require: true },
+    guildId: { type: String, required: true },
     channelList: { type: Array },
     constrains: { type: Object }
 });

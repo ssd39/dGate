@@ -1,6 +1,7 @@
 import React from "react";
 import { toast } from "react-toastify";
 import ShareIcon from '@mui/icons-material/Share';
+import config from "../config";
 
 export default function SubList({ subList }) {
   return (
@@ -9,7 +10,7 @@ export default function SubList({ subList }) {
         {subList.map((v, i) => {
           return (
             <div
-            onClick={()=> alert(":::")}
+            onClick={()=> {}}
               key={`sublist_${i}`}
               className="select-none flex-col cursor-pointer active:scale-90 w-80 p-2 border  shadow-lg shadow-blue-200 rounded-xl mx-2 h-36"
             >
@@ -34,7 +35,7 @@ export default function SubList({ subList }) {
                   onClick={(e) => {
                     e.stopPropagation()
                     toast.success("Subscription link copied to clipboard!");
-                    navigator.clipboard.writeText(`${window.location.protocol}//${window.location.hostname}/subscription/${v._id}`);  
+                    navigator.clipboard.writeText(`${config.URL}/subscribe/${v._id}`);  
                 }}
                   className="ml-2  text-white flex items-center font-bold shadow-xl active:scale-90 cursor-pointer rounded-full"
                 >

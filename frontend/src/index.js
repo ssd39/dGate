@@ -13,6 +13,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import CreateSubscription from "./pages/CreateSubscription";
 import Subscribe from "./pages/Subscribe";
+import SubscribeDiscord from "./pages/SubscribeDiscord";
 
 const router = createBrowserRouter([
   {
@@ -35,6 +36,10 @@ const router = createBrowserRouter([
     path: "/subscribe/:id",
     element: <Subscribe />,
   },
+  {
+    path: "/discord-verification",
+    element: <SubscribeDiscord />
+  }
 ]);
 
 const root = ReactDOM.createRoot(document.getElementById("root"));

@@ -5,7 +5,7 @@ const getClient = (token) => {
   return rest;
 };
 
-const getToken = async (code) => {
+const getToken = async (code, redirect_uri) => {
   const tokenResponseData = await fetch(
     "https://discord.com/api/oauth2/token",
     {
@@ -15,7 +15,7 @@ const getToken = async (code) => {
         client_secret: process.env.DISCORD_SECRET,
         code,
         grant_type: "authorization_code",
-        redirect_uri: process.env.REDIRECT_URI,
+        redirect_uri,
         scope: "identify",
       }).toString(),
       headers: {
