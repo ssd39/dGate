@@ -1,4 +1,5 @@
 Diamante Integration:
+
 **Frontend**: https://github.com/ssd39/dGate/blob/fd8c63f1562d64d77a5e871892c1549abc2131fc/frontend/src/pages/Subscribe.jsx#L37
 **Backend**: https://github.com/ssd39/dGate/blob/fd8c63f1562d64d77a5e871892c1549abc2131fc/backend/index.js#L248
 
