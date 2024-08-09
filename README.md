@@ -1,3 +1,7 @@
+Diamante Integration:
+**Frontend**: https://github.com/ssd39/dGate/blob/fd8c63f1562d64d77a5e871892c1549abc2131fc/frontend/src/pages/Subscribe.jsx#L37
+**Backend**: https://github.com/ssd39/dGate/blob/fd8c63f1562d64d77a5e871892c1549abc2131fc/backend/index.js#L248
+
 Monetizing and managing communities on popular platforms such as Discord, Telegram, and Slack can be challenging due to:
 
 - **Manual Payment Verification 🕵️‍♂️:** Tracking and verifying payments manually is time-consuming and error-prone, hindering effective monetization.
